@@ -161,6 +161,9 @@ private extension DottedProgressBar {
                 if nextAnimation.value > 0 && nextAnimation.value <= numberOfDots && nextAnimation.value != currentProgress {
                     animateProgress(animation: nextAnimation)
                 }
+                else if nextAnimation.value == currentProgress {
+                    animateNoProgress(animation: nextAnimation)
+                }
                 else {
                     print("DottedProgressBar - invalid setProgress \(nextAnimation.value)")
                     self.performQueuedAnimations()
@@ -275,6 +278,46 @@ private extension DottedProgressBar {
             self.performQueuedAnimations()
         }
     }
-    
+
+    func animateNoProgress(animation: DottedBarAnimation) {
+
+        let growDuration = progressChangeAnimationDuration * 0.5
+
+        if animation.animated {
+            let zoomIncrease = zoomIncreaseValueOnProgressAnimation
+
+            walkingDot.backgroundColor = progressAppearance.dotsProgressColor
+            walkingDot.layer.cornerRadius = progressAppearance.dotRadius
+            walkingDot.frame = dotFrame(forIndex: currentProgress - 1)
+            addSubview(walkingDot)
+            walkingDot.layer.zPosition = 1
+
+            let animation = CABasicAnimation(keyPath: "cornerRadius")
+            animation.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+            animation.fromValue = walkingDot.layer.cornerRadius
+            animation.toValue = progressAppearance.dotRadius + zoomIncrease
+            animation.duration = growDuration
+            walkingDot.layer.add(animation, forKey: "cornerRadius")
+
+            UIView.animate(withDuration: growDuration, delay: 0.0, options: .curveLinear, animations: {
+                let frame = self.dotFrame(forIndex: self.currentProgress - 1)
+                self.walkingDot.frame = CGRect(x: frame.origin.x - zoomIncrease, y: frame.origin.y - zoomIncrease, width: self.progressAppearance.dotRadius * 2 + zoomIncrease * 2, height: self.progressAppearance.dotRadius * 2 + zoomIncrease * 2)
+            }, completion: nil)
+        }
+
+        if animation.animated {
+            UIView.animate(withDuration: progressChangeAnimationDuration * 0.3, delay: growDuration, options: UIViewAnimationOptions(), animations: {
+                self.walkingDot.frame = self.dotFrame(forIndex: self.currentProgress - 1)
+            }, completion: { done in
+                self.walkingDot.removeFromSuperview()
+                DottedBarUtility.delay(self.pauseBetweenConsecutiveAnimations, closure: {
+                    self.performQueuedAnimations()
+                })
+            })
+        }
+        else {
+            self.performQueuedAnimations()
+        }
+    }
 }
 
